@@ -1,19 +1,28 @@
 class NotSendMessageError(Exception):
+    """Ошибка при отправке сообщения."""
+
     pass
 
 
 class NonStatusCodeError(Exception):
+    """Ошибка при получении ответа с сервера."""
+
     pass
 
 
 class JSonDecoderError(Exception):
+    """Ошибка преобразования в JSON."""
+
     pass
 
 
 class WrongStatusCodeError(Exception):
+    """Неверный ответ с сервера."""
+
     pass
 
 
 class NonTokenError(Exception):
-    pass
+    """Отсутствуют токены чата."""
 
+    pass
