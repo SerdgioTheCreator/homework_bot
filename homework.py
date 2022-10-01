@@ -127,7 +127,7 @@ def check_tokens():
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
-        message = 'Отсутствуют токены чата (id чата, бота или Практикума)'
+        message = 'Отсутствует токен(ы)'
         logger.critical(message)
         raise exceptions.NonTokenError(message)
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
