@@ -22,6 +22,12 @@ class WrongStatusCodeError(Exception):
     pass
 
 
+class EmptyAnswerFromAPI(Exception):
+    """Пустой ответ от API."""
+
+    pass
+
+
 class NonTokenError(Exception):
     """Отсутствуют токены чата."""
 
