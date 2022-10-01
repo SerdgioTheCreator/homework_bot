@@ -4,7 +4,6 @@ import os
 import sys
 import time
 from http import HTTPStatus
-from logging import handlers
 from typing import Dict, List
 
 import requests
@@ -36,7 +35,7 @@ format = '%(asctime)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
 stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(logging.Formatter(format))
 logger.addHandler(stream_handler)
-handler = logging.handlers.RotatingFileHandler(
+handler = logging.RotatingFileHandler(
     BASE_DIR, maxBytes=50000000, backupCount=5)
 logger.addHandler(handler)
 
