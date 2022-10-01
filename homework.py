@@ -37,7 +37,7 @@ stream_handler = logging.StreamHandler(sys.stdout)
 stream_handler.setFormatter(logging.Formatter(format))
 logger.addHandler(stream_handler)
 handler = logging.handlers.RotatingFileHandler(
-    BASE_DIR, maxBytes=50000000, backupCount=5)
+    filename=BASE_DIR, maxBytes=50000000, backupCount=5)
 logger.addHandler(handler)
 
 
