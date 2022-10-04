@@ -103,9 +103,8 @@ def parse_status(homework):
     homework_status = homework.get('status')
     if homework_status not in VERDICTS:
         raise ValueError('status отсутствует в словаре VERDICTS')
-    message = ''
-    return 'Изменился статус проверки работы "{homework_name}". {verdict}'\
-        .format(
+    return 'Изменился статус проверки работы "{homework_name}".' \
+           ' {verdict}'.format(
                homework_name=homework.get('homework_name'),
                verdict=VERDICTS.get(homework_status)
            )
