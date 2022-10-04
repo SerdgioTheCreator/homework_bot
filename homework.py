@@ -18,12 +18,10 @@ load_dotenv()
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-
 RETRY_TIME = 600
-CURRENT_TIME = int(time.time())
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-BASE_DIR = 'main.log'
+BASE_DIR = 'log/main.log'
 
 VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
@@ -32,20 +30,21 @@ VERDICTS = {
 }
 
 logger = logging.getLogger(__name__)
-format = '%(asctime)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
+formatter = '%(asctime)s - %(name)s - %(funcName)s - %(lineno)d - %(message)s'
 stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setFormatter(logging.Formatter(format))
+stream_handler.setFormatter(logging.Formatter(formatter))
 logger.addHandler(stream_handler)
 handler = RotatingFileHandler(
-    BASE_DIR, maxBytes=50000000, backupCount=5)
+    BASE_DIR, maxBytes=50000000, backupCount=5, encoding='UTF-8')
 logger.addHandler(handler)
 
 
 def send_message(bot, message):
     """Отправляет сообщение в Telegram чат."""
     try:
+        logger.info(f'Начали отправку сообщения "{message}" в Telegram')
         bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
-        logger.info(f'Начали отправку сообщения {message} в Telegram')
+        logger.info(f'Сообщение "{message}" отправлено в Telegram')
         return True
     except telegram.error.TelegramError as error:
         logger.error(f'Ошибка: {error}')
@@ -66,19 +65,22 @@ def get_api_answer(current_timestamp):
     try:
         response = requests.get(**api_answer)
         if response.status_code != HTTPStatus.OK:
-            message = 'Ошибка при получении ответа с сервера'
-            raise exceptions.NonStatusCodeError(message)
+            raise exceptions.NonStatusCodeError(
+                f'{response.status_code}, {response.reason}'
+                f'{response.raise_for_status()}'
+            )
         logger.info('Соединение с сервером установлено!')
         return response.json()
     except json.decoder.JSONDecodeError:
         raise exceptions.JSonDecoderError('Ошибка преобразования в JSON')
     except requests.RequestException as request_error:
-        message = f'Код ответа API (RequestException): {request_error}'
-        raise exceptions.WrongStatusCodeError(message)
+        raise exceptions.WrongStatusCodeError(
+            f'Код ответа API (RequestException): {request_error}'
+        )
     except Exception:
-        message = ('(Exception) {url}, {headers}, {params}'.format(
-            **api_answer))
-        raise ConnectionError(message)
+        raise ConnectionError(
+            '(Exception) {url}, {headers}, {params}'.format(**api_answer)
+        )
 
 
 def check_response(response):
@@ -87,8 +89,7 @@ def check_response(response):
     if not isinstance(response, Dict):
         raise TypeError('Ответ API не является словарем')
     if 'homeworks' not in response:
-        message = 'Пустой ответ от API'
-        raise exceptions.EmptyAnswerFromAPI(message)
+        raise exceptions.EmptyAnswerFromAPI('Пустой ответ от API')
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, List):
         raise TypeError('homeworks не является списком')
@@ -102,12 +103,12 @@ def parse_status(homework):
     homework_status = homework.get('status')
     if homework_status not in VERDICTS:
         raise ValueError('status отсутствует в словаре VERDICTS')
-    message = 'Изменился статус проверки работы'
-    return '{message} "{homework_name}". {verdict}'.format(
-        message=message,
-        homework_name=homework.get('homework_name'),
-        verdict=VERDICTS.get(homework_status)
-    )
+    message = ''
+    return 'Изменился статус проверки работы "{homework_name}". {verdict}'\
+        .format(
+               homework_name=homework.get('homework_name'),
+               verdict=VERDICTS.get(homework_status)
+           )
 
 
 def check_tokens():
@@ -119,8 +120,8 @@ def check_tokens():
     )
     answer = True
     for name, token in token_list:
-        if token is None:
-            logger.info(f'{name} не указан')
+        if not token:
+            logger.critical(f'{name} не указан')
             answer = False
     return answer
 
@@ -128,27 +129,27 @@ def check_tokens():
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
-        message = 'Отсутствует токен(ы)'
-        logger.critical(message)
-        raise exceptions.NonTokenError(message)
+        raise exceptions.NonTokenError('Отсутствует токен(ы)')
+    logger.critical('Отсутствует токен(ы)')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    current_timestamp = CURRENT_TIME
+    current_timestamp = 0
     current_report = {}
     prev_report = {}
     while True:
         try:
             response = get_api_answer(current_timestamp)
+            homeworks = check_response(response)
             if response:
-                check_response(response)
-                first_homework = response[0]
+                first_homework = homeworks[0]
                 current_report['output'] = parse_status(first_homework)
             else:
                 current_report['output'] = 'Нет новых статусов'
             if current_report != prev_report:
                 send_message(bot, current_report['output'])
-                prev_report = current_report.copy()
-                current_timestamp = response.get(
-                    'current_date', current_timestamp)
+                if True:
+                    prev_report = current_report.copy()
+                    current_timestamp = response.get(
+                        'current_date', current_timestamp)
             else:
                 logger.info('Нет новых статусов')
         except exceptions.EmptyAnswerFromAPI as error:
@@ -159,10 +160,7 @@ def main():
             current_report['output'] = message
             if current_report != prev_report:
                 send_message(bot, current_report['output'])
-                while True:
-                    prev_report = current_report.copy()
-                    current_timestamp = response.get(
-                        'current_date', current_timestamp)
+                prev_report = current_report.copy()
             logger.error(message)
         finally:
             time.sleep(RETRY_TIME)
