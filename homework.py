@@ -21,7 +21,7 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 RETRY_TIME = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-BASE_DIR = '/log/'
+BASE_DIR = os.path.abspath(__file__)
 
 VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
@@ -128,8 +128,8 @@ def check_tokens():
 def main():
     """Основная логика работы бота."""
     if not check_tokens():
+        logger.critical('Отсутствует токен(ы)')
         raise exceptions.NonTokenError('Отсутствует токен(ы)')
-    logger.critical('Отсутствует токен(ы)')
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = 0
     current_report = {}
@@ -138,14 +138,13 @@ def main():
         try:
             response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
-            if response:
+            if homeworks:
                 first_homework = homeworks[0]
                 current_report['output'] = parse_status(first_homework)
             else:
                 current_report['output'] = 'Нет новых статусов'
             if current_report != prev_report:
-                send_message(bot, current_report['output'])
-                if True:
+                if send_message(bot, current_report['output']):
                     prev_report = current_report.copy()
                     current_timestamp = response.get(
                         'current_date', current_timestamp)
